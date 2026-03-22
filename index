@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hawaii Capture</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ocean-lt:#38b6d8; --sand:#f5d98b; --sand-lt:#fdf0c4;
+  --coral:#f4623a; --coral-lt:#ff8b63; --sunset:#ff9f43;
+  --palm-lt:#4caf77; --foam:rgba(255,255,255,0.18);
+  --glass:rgba(255,255,255,0.10); --dark:#0c2233;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--dark);min-height:100vh;overflow:hidden;color:#fff;}
+
+/* ===== 背景 ===== */
+.bg{position:fixed;inset:0;z-index:0;background:linear-gradient(160deg,#0c2233 0%,#0a4a6b 45%,#0a7ea4 100%);overflow:hidden;}
+.wave{position:absolute;bottom:0;left:-10%;width:120%;border-radius:50% 50% 0 0/80px 80px 0 0;opacity:.15;animation:waveFlow 7s ease-in-out infinite;}
+.wave1{background:var(--ocean-lt);height:140px;}
+.wave2{background:#7dd8f0;height:110px;bottom:10px;animation-delay:-2.5s;}
+.wave3{background:#b8eeff;height:85px;bottom:20px;animation-delay:-4.5s;opacity:.09;}
+@keyframes waveFlow{0%,100%{transform:translateX(0)}50%{transform:translateX(3%)}}
+.sun{position:absolute;top:-80px;right:8%;width:260px;height:260px;background:radial-gradient(circle,#ffe566 0%,var(--sunset) 45%,rgba(255,130,0,0) 72%);border-radius:50%;opacity:.22;animation:sunPulse 6s ease-in-out infinite;}
+@keyframes sunPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.hib{position:absolute;border-radius:50%;opacity:.07;pointer-events:none;}
+.h1{width:160px;height:160px;background:var(--coral);top:10%;left:5%;}
+.h2{width:100px;height:100px;background:var(--sand);top:60%;right:12%;}
+
+/* ===== アプリ全体 ===== */
+.app{
+  position:relative;z-index:2;
+  display:flex;flex-direction:column;
+  height:100vh;
+  padding:10px 14px 8px;
+  gap:8px;
+  overflow:hidden;
+}
+
+/* ===== ヘッダー ===== */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  flex:0 0 auto;
+  min-height:0;overflow:hidden;
+}
+.logo-wrap{display:flex;align-items:center;gap:8px;min-width:0;}
+.logo-icon{font-size:22px;filter:drop-shadow(0 2px 8px rgba(255,160,50,.5));flex-shrink:0;}
+.logo-text{font-family:'Pacifico',cursive;font-size:21px;background:linear-gradient(135deg,#ffe566,var(--coral-lt),#ff6fa8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;white-space:nowrap;}
+.logo-sub{font-size:7px;color:rgba(255,255,255,.36);letter-spacing:.16em;text-transform:uppercase;margin-top:1px;white-space:nowrap;}
+.header-right{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.lang-toggle{display:flex;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15);border-radius:20px;overflow:hidden;}
+.lang-btn{font-family:'Nunito',sans-serif;font-size:8.5px;font-weight:800;padding:4px 10px;border:none;cursor:pointer;background:transparent;color:rgba(255,255,255,.4);transition:all .2s;}
+.lang-btn.active{background:var(--sand);color:#0c2233;}
+.status-pill{display:flex;align-items:center;gap:5px;background:var(--glass);border:1px solid var(--foam);border-radius:20px;padding:4px 10px;font-size:8.5px;font-weight:800;backdrop-filter:blur(8px);}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s;flex-shrink:0;}
+.dot.live{background:#50fa7b;box-shadow:0 0 7px #50fa7b;}
+.dot.auto{background:var(--sand);box-shadow:0 0 7px var(--sand);animation:blink 1s infinite;}
+.dot.capture{background:var(--coral);box-shadow:0 0 9px var(--coral);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ===== キャプチャー表示（最優先） ===== */
+.capture-hero{
+  flex:1 1 0;      /* 残り全スペースを取る */
+  min-height:60px; /* 最低限これだけは確保 */
+  overflow:hidden;
+  position:relative;
+}
+.capture-frame{
+  width:100%;height:100%;
+  background:rgba(0,0,0,.55);
+  border:2px solid rgba(255,255,255,.12);
+  border-radius:14px;overflow:hidden;position:relative;
+  box-shadow:0 8px 40px rgba(0,0,0,.5);
+  transition:border-color .3s,box-shadow .3s;
+}
+.capture-frame.glowing{
+  border-color:var(--coral);
+  box-shadow:0 0 0 2px rgba(244,98,58,.35),0 8px 40px rgba(244,98,58,.25);
+}
+#capturedImg{width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .4s;}
+#capturedImg.visible{opacity:1;}
+.capture-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;}
+.placeholder-icon{font-size:44px;animation:floatAnim 3s ease-in-out infinite;}
+@keyframes floatAnim{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.placeholder-text{font-size:11px;font-weight:700;line-height:2;color:rgba(255,255,255,.27);}
+.course-badge{position:absolute;top:10px;left:10px;background:linear-gradient(135deg,rgba(10,126,164,.85),rgba(6,78,110,.85));border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 13px;font-family:'Pacifico',cursive;font-size:12px;color:var(--sand-lt);backdrop-filter:blur(8px);display:none;}
+.course-badge.show{display:block;}
+.capture-ts{position:absolute;bottom:8px;right:10px;font-size:9px;font-weight:700;color:rgba(255,255,255,.4);display:none;}
+.capture-ts.show{display:block;}
+
+/* ===== ボトムバー（縮小可能） ===== */
+.bottom-bar{
+  flex:0 1 auto;     /* 縮小可、拡大しない */
+  min-height:0;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:220px 1fr;
+  gap:8px;
+  align-items:start;
+  /* 高さが足りないときにコンテンツが潰れるようにする */
+}
+
+/* カメラパネル */
+.camera-panel{
+  background:var(--glass);border:1px solid var(--foam);
+  border-radius:12px;padding:8px;backdrop-filter:blur(10px);
+  overflow:hidden;min-height:0;
+}
+.panel-label{font-size:7px;font-weight:800;letter-spacing:.2em;color:var(--sand);text-transform:uppercase;margin-bottom:5px;opacity:.8;}
+.video-wrap{position:relative;background:#000;border-radius:7px;overflow:hidden;aspect-ratio:16/9;margin-bottom:6px;border:1px solid rgba(255,255,255,.1);}
+#cameraFeed{width:100%;height:100%;object-fit:cover;display:block;}
+.corner{position:absolute;width:10px;height:10px;border-color:var(--sand);border-style:solid;opacity:.5;}
+.corner.tl{top:3px;left:3px;border-width:2px 0 0 2px;}
+.corner.tr{top:3px;right:3px;border-width:2px 2px 0 0;}
+.corner.bl{bottom:3px;left:3px;border-width:0 0 2px 2px;}
+.corner.br{bottom:3px;right:3px;border-width:0 2px 2px 0;}
+.sp-dot{position:absolute;width:7px;height:7px;border:2px solid;border-radius:2px;transform:translate(-50%,-50%);pointer-events:none;display:none;box-shadow:0 0 4px currentColor;}
+.sp-dot.show{display:block;}
+.live-badge{position:absolute;top:3px;left:3px;background:var(--coral);color:#fff;font-size:5.5px;font-weight:800;padding:2px 4px;border-radius:3px;display:none;animation:blink 1.2s infinite;}
+.live-badge.show{display:block;}
+
+select{font-family:'Nunito',sans-serif;font-size:8.5px;font-weight:700;background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 7px;width:100%;cursor:pointer;outline:none;margin-bottom:5px;}
+select:focus{border-color:var(--sand);}
+.btn-row{display:flex;gap:5px;}
+.btn{font-family:'Nunito',sans-serif;font-size:8.5px;font-weight:800;padding:5px 9px;border-radius:7px;cursor:pointer;border:1.5px solid;transition:all .15s;letter-spacing:.03em;white-space:nowrap;}
+.btn-ocean{border-color:var(--ocean-lt);color:var(--ocean-lt);background:transparent;}
+.btn-ocean:hover{background:var(--ocean-lt);color:#fff;}
+.btn-ghost{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.4);background:transparent;}
+.btn-ghost:hover{border-color:rgba(255,255,255,.5);color:rgba(255,255,255,.8);}
+.btn:active{transform:scale(.96);}
+.btn:disabled{opacity:.3;cursor:not-allowed;pointer-events:none;}
+
+/* コントロールパネル */
+.ctrl-panel{
+  background:var(--glass);border:1px solid var(--foam);
+  border-radius:12px;padding:10px 12px;backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:0;
+}
+
+/* AUTO + 手動 常時表示 */
+.ctrl-top{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;}
+.auto-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(0,0,0,.2);border-radius:9px;padding:6px 11px;
+}
+.auto-label{font-size:9.5px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:.07em;}
+.toggle-switch{position:relative;width:38px;height:21px;cursor:pointer;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;inset:0;border-radius:11px;background:rgba(255,255,255,.15);transition:background .3s;border:1px solid rgba(255,255,255,.2);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .3s;box-shadow:0 1px 4px rgba(0,0,0,.3);}
+input:checked ~ .toggle-track{background:var(--coral);}
+input:checked ~ .toggle-thumb{transform:translateX(17px);}
+
+/* タイムプログレス */
+.time-progress-wrap{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,.2);border-radius:9px;padding:6px 11px;
+}
+.time-progress-label{font-size:7.5px;font-weight:800;color:rgba(255,255,255,.38);letter-spacing:.1em;white-space:nowrap;}
+.time-progress-bar{
+  flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;
+}
+.time-progress-fill{
+  height:100%;width:0%;border-radius:3px;
+  background:linear-gradient(90deg,var(--palm-lt),var(--sand),var(--coral));
+  transition:width .1s linear;
+}
+.time-progress-num{font-size:8px;font-weight:800;color:var(--sand);min-width:28px;text-align:right;white-space:nowrap;}
+
+/* Manual capture */
+.capture-big{
+  width:100%;padding:9px;
+  font-family:'Pacifico',cursive;font-size:13px;
+  border:2px solid var(--coral);border-radius:10px;
+  background:linear-gradient(135deg,rgba(244,98,58,.1),rgba(255,139,99,.05));
+  color:var(--coral-lt);cursor:pointer;transition:all .2s;letter-spacing:.05em;
+}
+.capture-big:hover{background:linear-gradient(135deg,var(--coral),var(--coral-lt));color:#fff;box-shadow:0 4px 20px rgba(244,98,58,.4);transform:translateY(-1px);}
+.capture-big:active{transform:scale(.97);}
+.capture-big:disabled{opacity:.3;pointer-events:none;}
+
+/* デバッグ折り畳み */
+.debug-toggle-row{display:flex;align-items:center;justify-content:flex-end;}
+.debug-toggle-btn{
+  font-family:'Nunito',sans-serif;font-size:7.5px;font-weight:800;
+  padding:4px 10px;border-radius:7px;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,.18);color:rgba(255,255,255,.4);
+  background:transparent;transition:all .2s;display:flex;align-items:center;gap:4px;
+}
+.debug-toggle-btn:hover{border-color:var(--sand);color:var(--sand);}
+.debug-toggle-btn.open{border-color:var(--sand);color:var(--sand);background:rgba(245,217,139,.06);}
+.debug-chevron{display:inline-block;transition:transform .25s;font-size:8px;}
+.debug-toggle-btn.open .debug-chevron{transform:rotate(180deg);}
+
+.debug-area{overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .25s ease;}
+.debug-area.open{max-height:400px;opacity:1;}
+.debug-inner{display:flex;flex-direction:column;gap:7px;padding-top:2px;}
+
+/* 4点デバッグ */
+.debug-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.dbg-point{background:rgba(0,0,0,.3);border:1.5px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 6px;transition:border-color .15s,background .15s;}
+.dbg-point.hit{border-color:var(--palm-lt);background:rgba(76,175,119,.08);}
+.dbg-coord{font-size:6px;font-weight:800;color:rgba(255,255,255,.3);letter-spacing:.04em;margin-bottom:3px;}
+.dbg-swatch{width:100%;height:12px;border-radius:3px;margin-bottom:3px;border:1px solid rgba(255,255,255,.1);background:#333;transition:background .15s;}
+.dbg-rgb{font-size:6px;color:rgba(255,255,255,.35);font-weight:700;font-variant-numeric:tabular-nums;}
+.dbg-stat{font-size:6.5px;font-weight:800;margin-top:2px;}
+.dbg-stat.ok{color:var(--palm-lt);}
+.dbg-stat.ng{color:rgba(255,255,255,.26);}
+
+/* スライダー */
+.sliders-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px 12px;}
+.ctrl-group{}
+.ctrl-name{font-size:7px;font-weight:800;letter-spacing:.13em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px;}
+.slider-row{display:flex;align-items:center;gap:6px;}
+input[type=range]{-webkit-appearance:none;flex:1;height:3px;background:rgba(255,255,255,.15);border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--sand);cursor:pointer;box-shadow:0 0 5px rgba(245,217,139,.5);}
+.slider-val{font-size:9px;font-weight:800;color:var(--sand);min-width:26px;text-align:right;}
+
+/* 基準色 */
+.target-row{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border-radius:7px;padding:5px 9px;}
+.target-swatch{width:22px;height:22px;border-radius:4px;background:#434343;border:1px solid rgba(255,255,255,.2);flex-shrink:0;}
+.target-info{font-size:7.5px;font-weight:800;color:rgba(255,255,255,.4);line-height:1.7;}
+.target-hex{color:var(--sand-lt);font-size:9.5px;font-weight:800;}
+
+/* アクション */
+.action-row{display:flex;gap:5px;}
+
+/* Flash */
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:999;}
+.flash.go{animation:flashAnim .3s ease-out forwards;}
+@keyframes flashAnim{0%{opacity:.6}100%{opacity:0}}
+
+/* Float */
+#floatingCapture{position:fixed;z-index:200;background:rgba(10,34,51,.92);border:2px solid var(--coral);border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 20px rgba(244,98,58,.2);display:none;cursor:move;user-select:none;}
+#floatingCapture.visible{display:block;}
+.float-bar{background:linear-gradient(90deg,rgba(244,98,58,.2),rgba(255,139,99,.1));padding:5px 10px;display:flex;justify-content:space-between;align-items:center;}
+.float-title{font-family:'Pacifico',cursive;font-size:10px;color:var(--coral-lt);}
+.float-close{background:none;border:none;color:var(--coral);cursor:pointer;font-size:12px;font-weight:800;padding:0;}
+#floatingImg{display:block;width:300px;height:169px;object-fit:contain;}
+
+canvas{display:none;}
+
+/* ====================================================
+   レスポンシブ: ウィンドウが縮んだとき順次非表示
+   キャプチャー画像が最優先
+   ==================================================== */
+
+/* ウィンドウの高さが低い場合 */
+@media (max-height: 560px) {
+  .logo-sub       { display:none; }
+  .status-pill span{ display:none; }
+  .sliders-grid   { grid-template-columns:1fr 1fr; }
+}
+
+@media (max-height: 480px) {
+  /* カメラパネルを非表示→ボトムバー1カラム化 */
+  .camera-panel   { display:none; }
+  .bottom-bar     { grid-template-columns:1fr; }
+  .panel-label    { display:none; }
+  .debug-area.open{ max-height:200px; }
+}
+
+@media (max-height: 380px) {
+  /* ボトムバー全体を極限まで縮める */
+  .bottom-bar { gap:4px; }
+  .ctrl-panel { padding:6px 8px; gap:5px; }
+  .capture-big{ display:none; }
+  .debug-toggle-row{ display:none; }
+  .debug-area { display:none; }
+  .time-progress-wrap{ display:none; }
+}
+
+@media (max-height: 300px) {
+  /* ボトムバー完全非表示 */
+  .bottom-bar { display:none; }
+  header      { display:none; }
+  .app        { padding:4px; gap:4px; }
+}
+
+/* ウィンドウの幅が狭い場合 */
+@media (max-width: 640px) {
+  .bottom-bar     { grid-template-columns:1fr; }
+  .camera-panel   { display:none; }
+  .sliders-grid   { grid-template-columns:1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .logo-sub       { display:none; }
+  .logo-text      { font-size:17px; }
+  .ctrl-panel     { padding:8px 10px; }
+  .sliders-grid   { grid-template-columns:1fr; }
+}
+
+@media (max-width: 360px) {
+  .header-right   { gap:4px; }
+  .lang-toggle    { display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="sun"></div>
+  <div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div>
+  <div class="hib h1"></div><div class="hib h2"></div>
+</div>
+<div class="flash" id="flash"></div>
+
+<div id="floatingCapture">
+  <div class="float-bar">
+    <span class="float-title">🌺 Course Captured!</span>
+    <button class="float-close" onclick="hideFloat()">✕</button>
+  </div>
+  <img id="floatingImg" src="" alt="">
+</div>
+
+<div class="app">
+
+  <!-- ヘッダー -->
+  <header>
+    <div class="logo-wrap">
+      <span class="logo-icon">🌺</span>
+      <div>
+        <div class="logo-text">Hawaii Capture</div>
+        <div class="logo-sub" id="logoSub">Mario Kart World · Course Detector</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btnJP" onclick="setLang('ja')">JP</button>
+        <button class="lang-btn"        id="btnEN" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="status-pill">
+        <div class="dot" id="statusDot"></div>
+        <span id="statusText" style="font-size:8.5px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:.04em;">STANDBY</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ★ キャプチャー表示（最優先・flex:1） -->
+  <div class="capture-hero">
+    <div class="capture-frame" id="captureFrame">
+      <img id="capturedImg" src="" alt="">
+      <div class="capture-placeholder" id="placeholder">
+        <div class="placeholder-icon">🏝️</div>
+        <div class="placeholder-text" id="placeholderText">カメラを起動してAUTOをONにしてください</div>
+      </div>
+      <div class="course-badge" id="courseBadge"></div>
+      <div class="capture-ts"   id="captureTs"></div>
+    </div>
+  </div>
+
+  <!-- ボトムバー（縮小可能） -->
+  <div class="bottom-bar">
+
+    <!-- カメラパネル -->
+    <div class="camera-panel">
+      <div class="panel-label" id="lblCamera">📷 カメラ</div>
+      <div class="video-wrap" id="videoWrap">
+        <video id="cameraFeed" autoplay playsinline muted></video>
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="live-badge" id="liveBadge">● LIVE</div>
+        <div class="sp-dot" id="sd0" style="color:#ff6fa8;border-color:#ff6fa8;background:rgba(255,111,168,.25)"></div>
+        <div class="sp-dot" id="sd1" style="color:#ff9f43;border-color:#ff9f43;background:rgba(255,159,67,.25)"></div>
+        <div class="sp-dot" id="sd2" style="color:#38b6d8;border-color:#38b6d8;background:rgba(56,182,216,.25)"></div>
+        <div class="sp-dot" id="sd3" style="color:#4caf77;border-color:#4caf77;background:rgba(76,175,119,.25)"></div>
+      </div>
+      <select id="cameraSelect"><option value="" id="selDefault">— デバイスを選択 —</option></select>
+      <div class="btn-row">
+        <button class="btn btn-ocean" id="startBtn" onclick="startCamera()"><span id="lblStart">起動</span></button>
+        <button class="btn btn-ghost" id="stopBtn"  onclick="stopCamera()" disabled><span id="lblStop">停止</span></button>
+      </div>
+    </div>
+
+    <!-- コントロールパネル -->
+    <div class="ctrl-panel">
+
+      <!-- AUTO -->
+      <div class="auto-toggle">
+        <span class="auto-label" id="lblAuto">🤖 AUTO検出</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoToggle" onchange="toggleAuto()" disabled>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- タイムプログレスバー -->
+      <div class="time-progress-wrap">
+        <span class="time-progress-label" id="lblProgress">検出時間</span>
+        <div class="time-progress-bar">
+          <div class="time-progress-fill" id="progressFill"></div>
+        </div>
+        <span class="time-progress-num" id="progressNum">0.0s</span>
+      </div>
+
+      <!-- 手動キャプチャー -->
+      <button class="capture-big" id="manualBtn" onclick="manualCapture()" disabled>
+        📸 <span id="lblManual">手動キャプチャー</span>
+      </button>
+
+      <!-- デバッグ折り畳み -->
+      <div class="debug-toggle-row">
+        <button class="debug-toggle-btn" id="debugToggleBtn" onclick="toggleDebug()">
+          <span id="lblDebugBtn">⚙ 設定を表示</span>
+          <span class="debug-chevron">▼</span>
+        </button>
+      </div>
+
+      <!-- 折り畳みエリア -->
+      <div class="debug-area" id="debugArea">
+        <div class="debug-inner">
+
+          <!-- 基準色 -->
+          <div class="target-row">
+            <div class="target-swatch" id="targetSwatch"></div>
+            <div class="target-info">
+              <div id="lblTargetColor">基準色</div>
+              <div class="target-hex">#434343</div>
+            </div>
+          </div>
+
+          <!-- 4点デバッグ -->
+          <div class="debug-grid">
+            <div class="dbg-point" id="dp0">
+              <div class="dbg-coord">(80, 93)</div>
+              <div class="dbg-swatch" id="ds0"></div>
+              <div class="dbg-rgb"   id="dr0">—</div>
+              <div class="dbg-stat ng" id="dstat0">—</div>
+            </div>
+            <div class="dbg-point" id="dp1">
+              <div class="dbg-coord">(80, 150)</div>
+              <div class="dbg-swatch" id="ds1"></div>
+              <div class="dbg-rgb"   id="dr1">—</div>
+              <div class="dbg-stat ng" id="dstat1">—</div>
+            </div>
+            <div class="dbg-point" id="dp2">
+              <div class="dbg-coord">(500, 93)</div>
+              <div class="dbg-swatch" id="ds2"></div>
+              <div class="dbg-rgb"   id="dr2">—</div>
+              <div class="dbg-stat ng" id="dstat2">—</div>
+            </div>
+            <div class="dbg-point" id="dp3">
+              <div class="dbg-coord">(500, 150)</div>
+              <div class="dbg-swatch" id="ds3"></div>
+              <div class="dbg-rgb"   id="dr3">—</div>
+              <div class="dbg-stat ng" id="dstat3">—</div>
+            </div>
+          </div>
+
+          <!-- スライダー -->
+          <div class="sliders-grid">
+            <div class="ctrl-group">
+              <div class="ctrl-name" id="lblTolerance">許容幅</div>
+              <div class="slider-row">
+                <input type="range" id="tolSlider" min="1" max="60" value="10"
+                  oninput="tolerance=+this.value;document.getElementById('tolVal').textContent=this.value">
+                <span class="slider-val" id="tolVal">10</span>
+              </div>
+            </div>
+            <div class="ctrl-group">
+              <!-- 検出継続時間（秒）: デフォルト1秒 -->
+              <div class="ctrl-name" id="lblReqSec">検出継続時間</div>
+              <div class="slider-row">
+                <input type="range" id="reqSecSlider" min="0.5" max="10" step="0.5" value="1"
+                  oninput="reqSeconds=+this.value;document.getElementById('reqSecVal').textContent=this.value+'s'">
+                <span class="slider-val" id="reqSecVal">1s</span>
+              </div>
+            </div>
+            <div class="ctrl-group">
+              <div class="ctrl-name" id="lblCooldown">クールダウン</div>
+              <div class="slider-row">
+                <input type="range" id="cdSlider" min="1" max="30" value="5"
+                  oninput="cooldownSec=+this.value;document.getElementById('cdVal').textContent=this.value+'s'">
+                <span class="slider-val" id="cdVal">5s</span>
+              </div>
+            </div>
+            <div class="ctrl-group">
+              <div class="ctrl-name" id="lblMinHits">必要一致点数</div>
+              <div class="slider-row">
+                <input type="range" id="minHitSlider" min="1" max="4" value="3"
+                  oninput="minHits=+this.value;document.getElementById('minHitVal').textContent=this.value+'/4'">
+                <span class="slider-val" id="minHitVal">3/4</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- アクション -->
+          <div class="action-row">
+            <button class="btn btn-ghost" id="saveBtn"  onclick="downloadCapture()" disabled>💾 <span id="lblSave">保存</span></button>
+            <button class="btn btn-ghost" id="floatBtn" onclick="toggleFloat()"     disabled>📌 Float</button>
+            <button class="btn btn-ghost" onclick="clearCapture()">🗑️ <span id="lblClear">クリア</span></button>
+          </div>
+
+        </div>
+      </div><!-- /debug-area -->
+    </div><!-- /ctrl-panel -->
+  </div><!-- /bottom-bar -->
+</div><!-- /app -->
+
+<canvas id="canvas"></canvas>
+
+<script>
+// ============================================================
+// 多言語
+// ============================================================
+const T = {
+  ja:{
+    logoSub:'マリオカートワールド · コース検出ツール',
+    lblCamera:'📷 カメラ', lblStart:'起動', lblStop:'停止',
+    lblAuto:'🤖 AUTO検出',
+    lblProgress:'検出時間',
+    lblTolerance:'許容幅', lblReqSec:'検出継続時間',
+    lblCooldown:'クールダウン', lblMinHits:'必要一致点数',
+    lblManual:'手動キャプチャー', lblSave:'保存', lblClear:'クリア',
+    lblTargetColor:'基準色',
+    lblDebugOpen:'⚙ 設定を表示', lblDebugClose:'⚙ 設定を隠す',
+    selDefault:'— デバイスを選択 —',
+    placeholderText:'カメラを起動してAUTOをONにしてください',
+    sStandby:'スタンバイ', sLive:'ライブ', sWatch:'監視中',
+    sCap:'キャプチャー完了!', sErr:'エラー',
+    hitOk:'✓ 一致', hitNg:'✗'
+  },
+  en:{
+    logoSub:'Mario Kart World · Course Detector',
+    lblCamera:'📷 Camera', lblStart:'Start', lblStop:'Stop',
+    lblAuto:'🤖 AUTO Detect',
+    lblProgress:'Detect Time',
+    lblTolerance:'Tolerance', lblReqSec:'Detect Duration',
+    lblCooldown:'Cooldown', lblMinHits:'Min Points',
+    lblManual:'Manual Capture', lblSave:'Save', lblClear:'Clear',
+    lblTargetColor:'Target Color',
+    lblDebugOpen:'⚙ Show Settings', lblDebugClose:'⚙ Hide Settings',
+    selDefault:'— Select Device —',
+    placeholderText:'Start camera & enable AUTO',
+    sStandby:'STANDBY', sLive:'LIVE', sWatch:'WATCHING',
+    sCap:'CAPTURED!', sErr:'ERROR',
+    hitOk:'✓ Match', hitNg:'✗'
+  }
+};
+let lang = 'ja';
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('btnJP').classList.toggle('active', l==='ja');
+  document.getElementById('btnEN').classList.toggle('active', l==='en');
+  applyLang();
+}
+function applyLang() {
+  const t = T[lang];
+  ['logoSub','lblCamera','lblStart','lblStop','lblAuto','lblProgress',
+   'lblTolerance','lblReqSec','lblCooldown','lblMinHits',
+   'lblManual','lblSave','lblClear','lblTargetColor','placeholderText'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = t[id];
+  });
+  document.getElementById('selDefault').textContent = t.selDefault;
+  const isOpen = document.getElementById('debugArea').classList.contains('open');
+  document.getElementById('lblDebugBtn').textContent = isOpen ? t.lblDebugClose : t.lblDebugOpen;
+}
+
+// ============================================================
+// 検出設定
+// 基準色: #434343 = rgb(67, 67, 67)
+// ============================================================
+const SRC_W = 1920, SRC_H = 1080;
+const SAMPLE_POINTS = [
+  { x: 80,  y: 93  },
+  { x: 80,  y: 150 },
+  { x: 500, y: 93  },
+  { x: 500, y: 150 }
+];
+const TARGET_R = 0x43, TARGET_G = 0x43, TARGET_B = 0x43; // 67,67,67
+
+let tolerance  = 10;
+let reqSeconds = 1.0;   // ★ 時間基準: デフォルト1秒
+let cooldownSec= 5;
+let minHits    = 3;
+
+// 時間計測
+let matchStartTime  = null;  // 一致開始時刻 (Date.now ms)
+let cooldownUntil   = 0;
+let detectTimer     = null;
+let stream = null, autoOn = false;
+let currentUrl = null, floatVisible = false;
+let isDragging = false, dragDx = 0, dragDy = 0;
+let debugOpen = false;
+
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+
+function isTargetColor(r, g, b) {
+  return (
+    Math.abs(r - TARGET_R) <= tolerance &&
+    Math.abs(g - TARGET_G) <= tolerance &&
+    Math.abs(b - TARGET_B) <= tolerance
+  );
+}
+
+// ============================================================
+// デバッグ折り畳み
+// ============================================================
+function toggleDebug() {
+  debugOpen = !debugOpen;
+  document.getElementById('debugArea').classList.toggle('open', debugOpen);
+  document.getElementById('debugToggleBtn').classList.toggle('open', debugOpen);
+  document.getElementById('lblDebugBtn').textContent =
+    debugOpen ? T[lang].lblDebugClose : T[lang].lblDebugOpen;
+}
+
+// ============================================================
+// カメラ
+// ============================================================
+async function enumCams() {
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const sel = document.getElementById('cameraSelect');
+    sel.innerHTML = `<option value="">${T[lang].selDefault}</option>`;
+    devs.filter(d => d.kind === 'videoinput').forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId; o.textContent = d.label || `Camera ${i+1}`;
+      sel.appendChild(o);
+      if (d.label && /capture|hdmi|usb|elgato|av/i.test(d.label)) sel.value = d.deviceId;
+    });
+  } catch(e) {}
+}
+
+async function startCamera() {
+  const deviceId = document.getElementById('cameraSelect').value;
+  const constraints = {
+    video: deviceId
+      ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      : { width: { ideal: 1920 }, height: { ideal: 1080 } }
+  };
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('cameraFeed').srcObject = stream;
+    document.getElementById('liveBadge').classList.add('show');
+    document.getElementById('startBtn').disabled  = true;
+    document.getElementById('stopBtn').disabled   = false;
+    document.getElementById('manualBtn').disabled = false;
+    document.getElementById('autoToggle').disabled = false;
+    setStatus('live', T[lang].sLive);
+    document.getElementById('cameraFeed').addEventListener('loadedmetadata', updateSampleDots, { once: true });
+    await enumCams();
+  } catch(e) {
+    setStatus('', T[lang].sErr + ': ' + e.message.slice(0, 36));
+  }
+}
+
+function stopCamera() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null;
+  document.getElementById('cameraFeed').srcObject = null;
+  clearInterval(detectTimer); autoOn = false;
+  document.getElementById('autoToggle').checked  = false;
+  document.getElementById('autoToggle').disabled = true;
+  document.getElementById('liveBadge').classList.remove('show');
+  document.getElementById('startBtn').disabled  = false;
+  document.getElementById('stopBtn').disabled   = true;
+  document.getElementById('manualBtn').disabled = true;
+  [0,1,2,3].forEach(i => document.getElementById('sd'+i).classList.remove('show'));
+  matchStartTime = null; updateProgressBar(0, 0);
+  setStatus('', T[lang].sStandby);
+}
+
+function updateSampleDots() {
+  const wrap = document.getElementById('videoWrap');
+  const W = wrap.offsetWidth, H = wrap.offsetHeight;
+  SAMPLE_POINTS.forEach((p, i) => {
+    const el = document.getElementById('sd'+i);
+    el.style.left = (W * p.x / SRC_W) + 'px';
+    el.style.top  = (H * p.y / SRC_H) + 'px';
+    el.classList.add('show');
+  });
+}
+window.addEventListener('resize', () => { if (stream) updateSampleDots(); });
+
+// ============================================================
+// AUTO
+// ============================================================
+function toggleAuto() {
+  autoOn = document.getElementById('autoToggle').checked;
+  if (autoOn) {
+    matchStartTime = null; updateProgressBar(0, 0);
+    setStatus('auto', T[lang].sWatch);
+    detectTimer = setInterval(checkFrame, 100); // 100ms = 10fps で時間計測精度を上げる
+  } else {
+    clearInterval(detectTimer);
+    matchStartTime = null; updateProgressBar(0, 0);
+    if (stream) setStatus('live', T[lang].sLive);
+  }
+}
+
+// ============================================================
+// フレームチェック（時間基準）
+// ============================================================
+function checkFrame() {
+  const video = document.getElementById('cameraFeed');
+  if (!stream || !video.videoWidth) return;
+
+  const vw = video.videoWidth, vh = video.videoHeight;
+  let hits = 0;
+
+  SAMPLE_POINTS.forEach((p, i) => {
+    const sx = Math.round(p.x * vw / SRC_W);
+    const sy = Math.round(p.y * vh / SRC_H);
+    const sz = 5;
+    canvas.width = sz; canvas.height = sz;
+    ctx.drawImage(video, sx, sy, sz, sz, 0, 0, sz, sz);
+    const d = ctx.getImageData(0, 0, sz, sz).data;
+    let sr = 0, sg = 0, sb = 0;
+    const px = sz * sz;
+    for (let k = 0; k < d.length; k += 4) { sr += d[k]; sg += d[k+1]; sb += d[k+2]; }
+    const r = Math.round(sr/px), g = Math.round(sg/px), b = Math.round(sb/px);
+    const ok = isTargetColor(r, g, b);
+    if (ok) hits++;
+
+    document.getElementById('ds'+i).style.background = `rgb(${r},${g},${b})`;
+    document.getElementById('dr'+i).textContent = `${r}, ${g}, ${b}`;
+    const st = document.getElementById('dstat'+i);
+    st.textContent = ok ? T[lang].hitOk : T[lang].hitNg;
+    st.className = 'dbg-stat ' + (ok ? 'ok' : 'ng');
+    document.getElementById('dp'+i).className = 'dbg-point ' + (ok ? 'hit' : 'miss');
+  });
+
+  const now = Date.now();
+
+  if (hits >= minHits) {
+    if (matchStartTime === null) matchStartTime = now;
+    const elapsed = (now - matchStartTime) / 1000; // 秒
+    updateProgressBar(elapsed, reqSeconds);
+
+    if (elapsed >= reqSeconds && now > cooldownUntil) {
+      cooldownUntil  = now + cooldownSec * 1000;
+      matchStartTime = null; updateProgressBar(0, 0);
+      doCapture('AUTO');
+    }
+  } else {
+    matchStartTime = null;
+    updateProgressBar(0, 0);
+  }
+}
+
+// ============================================================
+// プログレスバー更新
+// ============================================================
+function updateProgressBar(elapsed, required) {
+  const pct = required > 0 ? Math.min(elapsed / required * 100, 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressNum').textContent  = elapsed.toFixed(1) + 's';
+}
+
+// ============================================================
+// キャプチャー
+// ============================================================
+function doCapture(mode) {
+  const video = document.getElementById('cameraFeed');
+  if (!video.videoWidth) return;
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  const url = canvas.toDataURL('image/png');
+  const f = document.getElementById('flash');
+  f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  showCapture(url, mode);
+}
+function manualCapture() { doCapture('MANUAL'); }
+
+function showCapture(url, mode) {
+  currentUrl = url;
+  document.getElementById('capturedImg').src = url;
+  document.getElementById('capturedImg').classList.add('visible');
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('captureFrame').classList.add('glowing');
+  document.getElementById('courseBadge').textContent = mode === 'AUTO' ? '🏁 AUTO' : '📸 MANUAL';
+  document.getElementById('courseBadge').classList.add('show');
+  document.getElementById('captureTs').textContent = new Date().toLocaleTimeString(lang === 'ja' ? 'ja-JP' : 'en-US');
+  document.getElementById('captureTs').classList.add('show');
+  document.getElementById('saveBtn').disabled  = false;
+  document.getElementById('floatBtn').disabled = false;
+  document.getElementById('floatingImg').src   = url;
+  setStatus('capture', T[lang].sCap);
+  setTimeout(() => {
+    if (autoOn && stream) setStatus('auto', T[lang].sWatch);
+    else if (stream)      setStatus('live', T[lang].sLive);
+    else                  setStatus('',     T[lang].sStandby);
+  }, 2200);
+}
+
+function clearCapture() {
+  currentUrl = null;
+  const img = document.getElementById('capturedImg');
+  img.classList.remove('visible'); img.src = '';
+  document.getElementById('placeholder').style.display = '';
+  document.getElementById('captureFrame').classList.remove('glowing');
+  document.getElementById('courseBadge').classList.remove('show');
+  document.getElementById('captureTs').classList.remove('show');
+  document.getElementById('saveBtn').disabled  = true;
+  document.getElementById('floatBtn').disabled = true;
+  hideFloat();
+}
+
+function downloadCapture() {
+  if (!currentUrl) return;
+  const a = document.createElement('a');
+  a.href = currentUrl; a.download = 'hawaii-capture-' + Date.now() + '.png'; a.click();
+}
+
+// ============================================================
+// Float
+// ============================================================
+function toggleFloat() {
+  const el = document.getElementById('floatingCapture');
+  floatVisible = !floatVisible;
+  if (floatVisible) {
+    el.classList.add('visible');
+    el.style.top = '20px'; el.style.right = '20px'; el.style.left = ''; el.style.bottom = '';
+  } else {
+    el.classList.remove('visible');
+  }
+  document.getElementById('floatBtn').textContent = floatVisible ? '📌 Unpin' : '📌 Float';
+}
+function hideFloat() {
+  floatVisible = false;
+  document.getElementById('floatingCapture').classList.remove('visible');
+  const fb = document.getElementById('floatBtn');
+  if (fb) fb.textContent = '📌 Float';
+}
+
+const floatEl = document.getElementById('floatingCapture');
+floatEl.querySelector('.float-bar').addEventListener('mousedown', e => {
+  isDragging = true;
+  const r = floatEl.getBoundingClientRect();
+  dragDx = e.clientX - r.left; dragDy = e.clientY - r.top;
+  floatEl.style.right = ''; floatEl.style.bottom = '';
+});
+document.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  floatEl.style.left = (e.clientX - dragDx) + 'px';
+  floatEl.style.top  = (e.clientY - dragDy) + 'px';
+});
+document.addEventListener('mouseup', () => isDragging = false);
+
+// ============================================================
+// Status
+// ============================================================
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'dot ' + (state || '');
+  document.getElementById('statusText').textContent = text;
+}
+
+// ============================================================
+// Init
+// ============================================================
+window.addEventListener('load', async () => {
+  document.getElementById('targetSwatch').style.background = `rgb(${TARGET_R},${TARGET_G},${TARGET_B})`;
+  applyLang();
+  setStatus('', T[lang].sStandby);
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: true });
+    s.getTracks().forEach(t => t.stop());
+  } catch(e) {}
+  await enumCams();
+});
+</script>
+</body>
+</html>
